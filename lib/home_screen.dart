@@ -15,39 +15,51 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   TextEditingController _textController = TextEditingController();
 
-  Future<void> _showDialog() async {
+  Future<void> _showDialog({TODOModel? todo}) async {
+    if (todo != null) {
+      _textController.text = todo.title;
+    } else {
+      _textController.clear();
+    }
+
     return showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Add Todo List'),
+          title: Text(todo == null ? 'Add Todo List' : 'Edit Todo'),
           content: TextField(
             controller: _textController,
-            decoration: InputDecoration(hintText: 'write todo item'),
+            decoration: const InputDecoration(hintText: 'Write todo item'),
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
+                _textController.clear();
               },
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
-                if (_textController.text.isEmpty) {
-                  return null;
+                if (_textController.text.isEmpty) return;
+
+                final provider = context.read<TodoProvider>();
+
+                if (todo == null) {
+                  provider.addToDoList(
+                    TODOModel(
+                      title: _textController.text,
+                      isCompleted: false,
+                    ),
+                  );
+                } else {
+                  provider.updateToDo(todo, _textController.text);
                 }
 
-                context.read<TodoProvider>().addToDoList(
-                  new TODOModel(
-                    title: _textController.text,
-                    isCompleted: false,
-                  ),
-                );
                 _textController.clear();
                 Navigator.pop(context);
               },
-              child: Text('Submit'),
+              child: Text(todo == null ? 'Submit' : 'Update'),
             ),
           ],
         );
@@ -65,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Expanded(
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Color(0xff622CA7),
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(30),
@@ -90,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'TodoList :',
                     style: TextStyle(
                       color: Colors.black,
@@ -107,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       );
                     },
-                    icon: Icon(Icons.check_circle_outline),
+                    icon: const Icon(Icons.check_circle_outline),
                   ),
                 ],
               ),
@@ -117,42 +129,48 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView.builder(
                 itemCount: provider.allTODOList.length,
                 itemBuilder: (context, itemIndex) {
+                  final todo = provider.allTODOList[itemIndex];
+
                   return ListTile(
                     onTap: () {
-                      provider.todoStatusChange(
-                        provider.allTODOList[itemIndex],
-                      );
+                      provider.todoStatusChange(todo);
                     },
                     leading: MSHCheckbox(
                       size: 30,
-                      value: provider.allTODOList[itemIndex].isCompleted,
+                      value: todo.isCompleted,
                       colorConfig: MSHColorConfig.fromCheckedUncheckedDisabled(
                         checkedColor: Colors.blue,
                       ),
                       onChanged: (selected) {
-                        provider.todoStatusChange(
-                          provider.allTODOList[itemIndex],
-                        );
+                        provider.todoStatusChange(todo);
                       },
                     ),
                     title: Text(
-                      provider.allTODOList[itemIndex].title,
+                      todo.title,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 22,
-                        decoration:
-                            provider.allTODOList[itemIndex].isCompleted == true
+                        decoration: todo.isCompleted
                             ? TextDecoration.none
                             : null,
                       ),
                     ),
-                    trailing: IconButton(
-                      onPressed: () {
-                        provider.removedToDoList(
-                          provider.allTODOList[itemIndex],
-                        );
-                      },
-                      icon: Icon(Icons.delete),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () {
+                            _showDialog(todo: todo);
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            provider.removedToDoList(todo);
+                          },
+                        ),
+                      ],
                     ),
                   );
                 },
@@ -162,11 +180,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Color(0xff622CA7),
+        backgroundColor: const Color(0xff622CA7),
         onPressed: () {
           _showDialog();
         },
-        child: Icon(Icons.add, color: Colors.white, size: 30),
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
     );
   }
