@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:msh_checkbox/msh_checkbox.dart';
 import 'package:project/model/todo_model.dart';
 import 'package:project/provider/todo_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:msh_checkbox/msh_checkbox.dart';
+
 import 'complete_todo_page.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,9 +14,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  TextEditingController _textController = TextEditingController();
+  final TextEditingController _textController = TextEditingController();
 
   Future<void> _showDialog({TODOModel? todo}) async {
+    if (!mounted) return;
+
     if (todo != null) {
       _textController.text = todo.title;
     } else {
@@ -24,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return showDialog(
       context: context,
-      builder: (context) {
+      builder: (_) {
         return AlertDialog(
           title: Text(todo == null ? 'Add Todo List' : 'Edit Todo'),
           content: TextField(
@@ -40,24 +43,22 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 if (_textController.text.isEmpty) return;
 
                 final provider = context.read<TodoProvider>();
 
                 if (todo == null) {
-                  provider.addToDoList(
-                    TODOModel(
-                      title: _textController.text,
-                      isCompleted: false,
-                    ),
+                  await provider.addToDoList(
+                    TODOModel(title: _textController.text, isCompleted: false),
                   );
                 } else {
-                  provider.updateToDo(todo, _textController.text);
+                  await provider.updateToDo(todo, _textController.text);
                 }
 
-                _textController.clear();
+                if (!mounted) return;
                 Navigator.pop(context);
+                _textController.clear();
               },
               child: Text(todo == null ? 'Submit' : 'Update'),
             ),
@@ -75,28 +76,29 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xff622CA7),
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
+            Container(
+              height: 160,
+              decoration: const BoxDecoration(
+                color: Color(0xff622CA7),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
                 ),
-                child: const Center(
-                  child: Text(
-                    "TO DO List",
-                    style: TextStyle(
-                      fontSize: 32,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+              ),
+              child: const Center(
+                child: Text(
+                  "TO DO List",
+                  style: TextStyle(
+                    fontSize: 32,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
+
             const SizedBox(height: 10),
+
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -106,8 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     'TodoList :',
                     style: TextStyle(
                       color: Colors.black,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
                     ),
                   ),
                   IconButton(
@@ -124,12 +126,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
+
             Expanded(
-              flex: 4,
-              child: ListView.builder(
+              child: provider.allTODOList.isEmpty
+                  ? const Center(
+                child: Text(
+                  "No tasks added yet!",
+                  style: TextStyle(fontSize: 18),
+                ),
+              )
+                  : ListView.builder(
                 itemCount: provider.allTODOList.length,
-                itemBuilder: (context, itemIndex) {
-                  final todo = provider.allTODOList[itemIndex];
+                itemBuilder: (context, index) {
+                  final todo = provider.allTODOList[index];
 
                   return ListTile(
                     onTap: () {
@@ -138,10 +147,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: MSHCheckbox(
                       size: 30,
                       value: todo.isCompleted,
-                      colorConfig: MSHColorConfig.fromCheckedUncheckedDisabled(
+                      colorConfig:
+                      MSHColorConfig.fromCheckedUncheckedDisabled(
                         checkedColor: Colors.blue,
                       ),
-                      onChanged: (selected) {
+                      onChanged: (value) {
                         provider.todoStatusChange(todo);
                       },
                     ),
@@ -149,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       todo.title,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 22,
+                        fontSize: 20,
                         decoration: todo.isCompleted
                             ? TextDecoration.none
                             : null,
@@ -159,13 +169,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          icon:
+                          const Icon(Icons.edit, color: Colors.blue),
                           onPressed: () {
                             _showDialog(todo: todo);
                           },
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
+                          icon:
+                          const Icon(Icons.delete, color: Colors.red),
                           onPressed: () {
                             provider.removedToDoList(todo);
                           },
@@ -179,12 +191,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xff622CA7),
         onPressed: () {
           _showDialog();
         },
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
     );
   }
